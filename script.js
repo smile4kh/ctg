@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
         console.log("Analyze button clicked!");
         
         if (fileInput.files.length === 0) {
-            alert("Please upload a CTG image first!");
+            alert("Please upload a JPEG image first!");
             return;
         }
 
@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", function () {
             canvas.height = img.height / 2;
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             URL.revokeObjectURL(img.src);
-            document.getElementById("analysisResult").innerText = "Processing CTG...";
+            document.getElementById("analysisResult").innerText = "Processing JPEG...";
         };
     });
 });
