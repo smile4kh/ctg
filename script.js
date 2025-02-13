@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             console.log("Tensor created:", tensor.shape);
 
             console.log("Applying Sobel Edge Detection...");
-            let edgeTensor = applySobelFilter(tensor);
+            let edgeTensor = await applySobelFilter(tensor);
             console.log("Edge Detection Applied!");
 
             console.log("Displaying processed image...");
@@ -51,9 +51,14 @@ document.addEventListener("DOMContentLoaded", async function () {
         };
     });
 
-    function applySobelFilter(imageTensor) {
+    async function applySobelFilter(imageTensor) {
+        // Ensure WebGL backend is used
+        await tf.ready();
+        
+        // Apply Sobel Edge Detection
         let sobelEdges = tf.image.sobelEdges(imageTensor);
         let edgeTensor = sobelEdges.slice([0, 0, 0, 0], [-1, -1, -1, 1]).abs().max(2).expandDims(-1);
+        
         return edgeTensor;
     }
 });
