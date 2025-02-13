@@ -51,33 +51,40 @@ document.addEventListener("DOMContentLoaded", async function () {
         };
     });
 
-    // ✅ Custom Sobel Edge Detection Using Convolution
+    // ✅ Fixed Sobel Filter
     async function applyCustomSobelFilter(imageTensor) {
         await tf.ready();
         
         console.log("Applying custom Sobel filter...");
 
+        // ✅ Fix: Ensure Correct Shape for Sobel Kernels
         const sobelX = tf.tensor2d([
             [-1, 0, 1],
             [-2, 0, 2],
             [-1, 0, 1]
-        ], [3, 3, 1, 1]);
+        ], [3, 3]); // Corrected shape
 
         const sobelY = tf.tensor2d([
             [-1, -2, -1],
             [0, 0, 0],
             [1, 2, 1]
-        ], [3, 3, 1, 1]);
+        ], [3, 3]); // Corrected shape
 
-        const edgesX = imageTensor.conv2d(sobelX, 1, "same");
-        const edgesY = imageTensor.conv2d(sobelY, 1, "same");
+        // ✅ Convert Image to Grayscale (Single Channel)
+        let grayTensor = imageTensor.mean(2).expandDims(-1);
+
+        // ✅ Apply Sobel Filters
+        const edgesX = tf.conv2d(grayTensor, sobelX.expandDims(-1).expandDims(-1), 1, "same");
+        const edgesY = tf.conv2d(grayTensor, sobelY.expandDims(-1).expandDims(-1), 1, "same");
 
         let edgeTensor = tf.sqrt(tf.add(tf.square(edgesX), tf.square(edgesY)));
 
+        // ✅ Free Memory
         sobelX.dispose();
         sobelY.dispose();
         edgesX.dispose();
         edgesY.dispose();
+        grayTensor.dispose();
 
         return edgeTensor;
     }
