@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         return tensor.sub(minVal).div(maxVal.sub(minVal));
     }
 
-    // ✅ Automatic CTG Interpretation (Rule-Based)
+    // ✅ Improved CTG Interpretation (More Accurate)
     function interpretCTG(edgeTensor) {
         const data = edgeTensor.arraySync();
         let pixelSum = 0;
@@ -104,6 +104,10 @@ document.addEventListener("DOMContentLoaded", async function () {
         let variabilitySum = 0;
         let maxPixel = 0;
         let minPixel = 1;
+
+        let decelerationCount = 0;
+        let sustainedLowVariability = 0;
+        let lastValue = 0;
 
         // ✅ Analyze pixel intensity across the image
         for (let i = 0; i < data.length; i++) {
@@ -119,7 +123,18 @@ document.addEventListener("DOMContentLoaded", async function () {
                 if (i > 0) {
                     let diff = Math.abs(pixelValue - data[i - 1][j][0]);
                     variabilitySum += diff;
+
+                    // ✅ Detect decelerations (Sudden Drops)
+                    if (diff > 0.15 && pixelValue < lastValue - 0.1) {
+                        decelerationCount++;
+                    }
+
+                    // ✅ Detect sustained low variability (Flat Tracing)
+                    if (diff < 0.02) {
+                        sustainedLowVariability++;
+                    }
                 }
+                lastValue = pixelValue;
             }
         }
 
@@ -127,13 +142,15 @@ document.addEventListener("DOMContentLoaded", async function () {
         let variability = variabilitySum / pixelCount;
         let range = maxPixel - minPixel;
 
-        console.log(`Avg Pixel: ${avgPixel}, Variability: ${variability}, Range: ${range}`);
+        console.log(`Avg Pixel: ${avgPixel}, Variability: ${variability}, Range: ${range}, Decelerations: ${decelerationCount}`);
 
-        // ✅ Interpretation Rules
-        if (avgPixel > 0.5 && variability > 0.05 && range > 0.3) {
+        // ✅ Improved Interpretation Rules
+        if (avgPixel > 0.5 && variability > 0.05 && range > 0.3 && decelerationCount < 5) {
             return "Normal CTG (Healthy FHR & Variability)";
         } else if (avgPixel > 0.4 && variability < 0.05) {
             return "Suspicious CTG (Low Variability)";
+        } else if (decelerationCount > 5 || sustainedLowVariability > 100) {
+            return "Pathological CTG (Late Decelerations & Low Variability)";
         } else {
             return "Pathological CTG (Abnormal Pattern Detected)";
         }
