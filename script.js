@@ -43,6 +43,9 @@ document.addEventListener("DOMContentLoaded", async function () {
             let edgeTensor = await applyCustomSobelFilter(tensor);
             console.log("Edge Detection Applied!");
 
+            console.log("Normalizing Edge Tensor for Display...");
+            edgeTensor = normalizeTensor(edgeTensor); // ✅ Fix: Normalize output
+
             console.log("Displaying processed image...");
             await tf.browser.toPixels(edgeTensor, canvas);
             console.log("Processing complete!");
@@ -51,35 +54,31 @@ document.addEventListener("DOMContentLoaded", async function () {
         };
     });
 
-    // ✅ Fixed Sobel Filter
+    // ✅ Custom Sobel Edge Detection
     async function applyCustomSobelFilter(imageTensor) {
         await tf.ready();
         
         console.log("Applying custom Sobel filter...");
 
-        // ✅ Fix: Ensure Correct Shape for Sobel Kernels
         const sobelX = tf.tensor2d([
             [-1, 0, 1],
             [-2, 0, 2],
             [-1, 0, 1]
-        ], [3, 3]); // Corrected shape
+        ], [3, 3]);
 
         const sobelY = tf.tensor2d([
             [-1, -2, -1],
             [0, 0, 0],
             [1, 2, 1]
-        ], [3, 3]); // Corrected shape
+        ], [3, 3]);
 
-        // ✅ Convert Image to Grayscale (Single Channel)
         let grayTensor = imageTensor.mean(2).expandDims(-1);
 
-        // ✅ Apply Sobel Filters
-        const edgesX = tf.conv2d(grayTensor, sobelX.expandDims(-1).expandDims(-1), 1, "same");
-        const edgesY = tf.conv2d(grayTensor, sobelY.expandDims(-1).expandDims(-1), 1, "same");
+        const edgesX = tf.conv2d(grayTensor, sobelX.reshape([3, 3, 1, 1]), 1, "same");
+        const edgesY = tf.conv2d(grayTensor, sobelY.reshape([3, 3, 1, 1]), 1, "same");
 
         let edgeTensor = tf.sqrt(tf.add(tf.square(edgesX), tf.square(edgesY)));
 
-        // ✅ Free Memory
         sobelX.dispose();
         sobelY.dispose();
         edgesX.dispose();
@@ -87,5 +86,12 @@ document.addEventListener("DOMContentLoaded", async function () {
         grayTensor.dispose();
 
         return edgeTensor;
+    }
+
+    // ✅ Fix: Normalize tensor to [0,1] range
+    function normalizeTensor(tensor) {
+        const minVal = tensor.min();
+        const maxVal = tensor.max();
+        return tensor.sub(minVal).div(maxVal.sub(minVal)); // Scale to [0,1]
     }
 });
