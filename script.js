@@ -54,7 +54,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     async function applySobelFilter(imageTensor) {
         await tf.ready();
         
-        // ✅ Ensure TensorFlow.js Image Processing is Loaded
+        // ✅ Ensure WebGL Backend is Used
+        await tf.setBackend('webgl');
+
+        // ✅ Ensure Sobel Edge Detection is Available
         if (!tf.image.sobelEdges) {
             console.error("Sobel edge detection not found in TensorFlow.js!");
             return imageTensor;
