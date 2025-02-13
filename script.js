@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         return tensor.sub(minVal).div(maxVal.sub(minVal));
     }
 
-    // ✅ Improved CTG Interpretation (More Adaptive)
+    // ✅ Improved CTG Interpretation (Balanced Detection)
     function interpretCTG(edgeTensor) {
         const data = edgeTensor.arraySync();
         let pixelSum = 0;
@@ -109,7 +109,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         let sustainedLowVariability = 0;
         let lastValue = 0;
         let lowVarSegments = 0;
-        let segmentLength = 30; // Adjusted window for better detection
+        let segmentLength = 50; // Adjusted window for better detection
         let windowSum = 0;
 
         // ✅ Analyze pixel intensity across the image
@@ -128,14 +128,14 @@ document.addEventListener("DOMContentLoaded", async function () {
                     variabilitySum += diff;
 
                     // ✅ Detect decelerations (Sudden Drops)
-                    if (diff > 0.1 && pixelValue < lastValue - 0.08) {
+                    if (diff > 0.12 && pixelValue < lastValue - 0.08) {
                         decelerationCount++;
                     }
 
                     // ✅ Detect sustained low variability (Flat Tracing)
                     windowSum += diff;
                     if (i % segmentLength === 0) {
-                        if (windowSum / segmentLength < 0.012) {
+                        if (windowSum / segmentLength < 0.01) {
                             lowVarSegments++;
                         }
                         windowSum = 0;
@@ -151,15 +151,15 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         console.log(`Avg Pixel: ${avgPixel}, Variability: ${variability}, Range: ${range}, Decelerations: ${decelerationCount}, Low Variability Segments: ${lowVarSegments}`);
 
-        // ✅ **New Interpretation Rules** (More Balanced)
-        if (avgPixel > 0.5 && variability > 0.04 && range > 0.25 && decelerationCount < 3 && lowVarSegments < 2) {
-            return "Normal CTG (Healthy FHR & Variability)";
+        // ✅ **Balanced Interpretation Rules** (Prevents Over-Detection of Pathological Cases)
+        if (avgPixel > 0.5 && variability > 0.03 && range > 0.2 && decelerationCount < 3 && lowVarSegments < 2) {
+            return "✅ Normal CTG (Healthy FHR & Variability)";
         } else if (lowVarSegments > 2 && lowVarSegments < 5) {
-            return "Suspicious CTG (Mild Reduced Variability)";
+            return "⚠️ Suspicious CTG (Mild Reduced Variability)";
         } else if (decelerationCount > 5 || lowVarSegments > 5) {
-            return "Pathological CTG (Late Decelerations & Severe Low Variability)";
+            return "🚨 Pathological CTG (Late Decelerations & Severe Low Variability)";
         } else {
-            return "Suspicious CTG (Needs Further Evaluation)";
+            return "⚠️ Suspicious CTG (Needs Further Evaluation)";
         }
     }
 });
