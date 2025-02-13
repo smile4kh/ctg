@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
     console.log("Script.js is loaded!");
 
     let analyzeBtn = document.getElementById("analyzeBtn");
@@ -10,6 +10,11 @@ document.addEventListener("DOMContentLoaded", function () {
         console.error("Button not found!");
         return;
     }
+
+    // ✅ Set WebGL Backend (Fix for Sobel Edge Detection)
+    await tf.setBackend('webgl');
+    await tf.ready();
+    console.log("TensorFlow.js WebGL backend activated!");
 
     analyzeBtn.addEventListener("click", async function () {
         console.log("Analyze button clicked!");
@@ -24,28 +29,31 @@ document.addEventListener("DOMContentLoaded", function () {
         img.src = URL.createObjectURL(file);
 
         img.onload = async function () {
-            canvas.width = img.width / 2; 
+            console.log("Image loaded!");
+            canvas.width = img.width / 2;
             canvas.height = img.height / 2;
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             URL.revokeObjectURL(img.src);
 
-            // Convert Image to Tensor
+            console.log("Converting image to tensor...");
             let tensor = tf.browser.fromPixels(canvas).toFloat().div(255);
-            
-            // Apply Edge Detection (Sobel Filter)
-            let edgeTensor = applySobelFilter(tensor);
+            console.log("Tensor created:", tensor.shape);
 
-            // Display Processed Image
+            console.log("Applying Sobel Edge Detection...");
+            let edgeTensor = applySobelFilter(tensor);
+            console.log("Edge Detection Applied!");
+
+            console.log("Displaying processed image...");
             await tf.browser.toPixels(edgeTensor, canvas);
+            console.log("Processing complete!");
 
             document.getElementById("analysisResult").innerText = "CTG AI Processing Completed!";
         };
     });
 
-    // Function to Apply Sobel Edge Detection
     function applySobelFilter(imageTensor) {
-        let sobelX = tf.image.sobelEdges(imageTensor).slice([0, 0, 0, 0], [-1, -1, -1, 1]);
-        let edgeTensor = sobelX.abs().max(2).expandDims(-1);
+        let sobelEdges = tf.image.sobelEdges(imageTensor);
+        let edgeTensor = sobelEdges.slice([0, 0, 0, 0], [-1, -1, -1, 1]).abs().max(2).expandDims(-1);
         return edgeTensor;
     }
 });
