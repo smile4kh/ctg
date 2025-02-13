@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         return tensor.sub(minVal).div(maxVal.sub(minVal));
     }
 
-    // ✅ Improved CTG Interpretation (More Accurate)
+    // ✅ Improved CTG Interpretation (Enhanced Variability Detection)
     function interpretCTG(edgeTensor) {
         const data = edgeTensor.arraySync();
         let pixelSum = 0;
@@ -108,6 +108,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         let decelerationCount = 0;
         let sustainedLowVariability = 0;
         let lastValue = 0;
+        let lowVarSegments = 0;
+        let segmentLength = 10; // Moving window for variability detection
+        let windowSum = 0;
 
         // ✅ Analyze pixel intensity across the image
         for (let i = 0; i < data.length; i++) {
@@ -119,7 +122,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 if (pixelValue > maxPixel) maxPixel = pixelValue;
                 if (pixelValue < minPixel) minPixel = pixelValue;
 
-                // ✅ Calculate variability (differences in pixel intensity)
+                // ✅ Calculate variability using a moving average window
                 if (i > 0) {
                     let diff = Math.abs(pixelValue - data[i - 1][j][0]);
                     variabilitySum += diff;
@@ -130,8 +133,12 @@ document.addEventListener("DOMContentLoaded", async function () {
                     }
 
                     // ✅ Detect sustained low variability (Flat Tracing)
-                    if (diff < 0.02) {
-                        sustainedLowVariability++;
+                    windowSum += diff;
+                    if (i % segmentLength === 0) {
+                        if (windowSum / segmentLength < 0.02) {
+                            lowVarSegments++;
+                        }
+                        windowSum = 0;
                     }
                 }
                 lastValue = pixelValue;
@@ -142,13 +149,13 @@ document.addEventListener("DOMContentLoaded", async function () {
         let variability = variabilitySum / pixelCount;
         let range = maxPixel - minPixel;
 
-        console.log(`Avg Pixel: ${avgPixel}, Variability: ${variability}, Range: ${range}, Decelerations: ${decelerationCount}`);
+        console.log(`Avg Pixel: ${avgPixel}, Variability: ${variability}, Range: ${range}, Decelerations: ${decelerationCount}, Low Variability Segments: ${lowVarSegments}`);
 
-        // ✅ Improved Interpretation Rules
-        if (avgPixel > 0.5 && variability > 0.05 && range > 0.3 && decelerationCount < 5) {
+        // ✅ Improved Interpretation Rules with Better Variability Detection
+        if (avgPixel > 0.5 && variability > 0.05 && range > 0.3 && decelerationCount < 5 && lowVarSegments < 3) {
             return "Normal CTG (Healthy FHR & Variability)";
-        } else if (avgPixel > 0.4 && variability < 0.05) {
-            return "Suspicious CTG (Low Variability)";
+        } else if (lowVarSegments > 3) {
+            return "Suspicious CTG (Prolonged Low Variability)";
         } else if (decelerationCount > 5 || sustainedLowVariability > 100) {
             return "Pathological CTG (Late Decelerations & Low Variability)";
         } else {
