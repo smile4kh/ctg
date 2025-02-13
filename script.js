@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
     }
 
-    // ✅ Set WebGL Backend (Fix for Sobel Edge Detection)
+    // ✅ Set WebGL Backend
     await tf.setBackend('webgl');
     await tf.ready();
     console.log("TensorFlow.js WebGL backend activated!");
@@ -39,8 +39,8 @@ document.addEventListener("DOMContentLoaded", async function () {
             let tensor = tf.browser.fromPixels(canvas).toFloat().div(255);
             console.log("Tensor created:", tensor.shape);
 
-            console.log("Applying Sobel Edge Detection...");
-            let edgeTensor = await applySobelFilter(tensor);
+            console.log("Applying Custom Sobel Edge Detection...");
+            let edgeTensor = await applyCustomSobelFilter(tensor);
             console.log("Edge Detection Applied!");
 
             console.log("Displaying processed image...");
@@ -51,20 +51,33 @@ document.addEventListener("DOMContentLoaded", async function () {
         };
     });
 
-    async function applySobelFilter(imageTensor) {
+    // ✅ Custom Sobel Edge Detection Using Convolution
+    async function applyCustomSobelFilter(imageTensor) {
         await tf.ready();
         
-        // ✅ Ensure WebGL Backend is Used
-        await tf.setBackend('webgl');
+        console.log("Applying custom Sobel filter...");
 
-        // ✅ Ensure Sobel Edge Detection is Available
-        if (!tf.image.sobelEdges) {
-            console.error("Sobel edge detection not found in TensorFlow.js!");
-            return imageTensor;
-        }
+        const sobelX = tf.tensor2d([
+            [-1, 0, 1],
+            [-2, 0, 2],
+            [-1, 0, 1]
+        ], [3, 3, 1, 1]);
 
-        let sobelEdges = tf.image.sobelEdges(imageTensor);
-        let edgeTensor = sobelEdges.slice([0, 0, 0, 0], [-1, -1, -1, 1]).abs().max(2).expandDims(-1);
+        const sobelY = tf.tensor2d([
+            [-1, -2, -1],
+            [0, 0, 0],
+            [1, 2, 1]
+        ], [3, 3, 1, 1]);
+
+        const edgesX = imageTensor.conv2d(sobelX, 1, "same");
+        const edgesY = imageTensor.conv2d(sobelY, 1, "same");
+
+        let edgeTensor = tf.sqrt(tf.add(tf.square(edgesX), tf.square(edgesY)));
+
+        sobelX.dispose();
+        sobelY.dispose();
+        edgesX.dispose();
+        edgesY.dispose();
 
         return edgeTensor;
     }
