@@ -39,22 +39,24 @@ document.addEventListener("DOMContentLoaded", async function () {
             let tensor = tf.browser.fromPixels(canvas).toFloat().div(255);
             console.log("Tensor created:", tensor.shape);
 
-            console.log("Applying Custom Sobel Edge Detection...");
+            console.log("Applying Sobel Edge Detection...");
             let edgeTensor = await applyCustomSobelFilter(tensor);
             console.log("Edge Detection Applied!");
 
-            console.log("Normalizing Edge Tensor for Display...");
-            edgeTensor = normalizeTensor(edgeTensor); // ✅ Fix: Normalize output
+            console.log("Extracting CTG Features...");
+            let interpretation = interpretCTG(edgeTensor);
+            console.log("Interpretation Complete!");
 
             console.log("Displaying processed image...");
+            edgeTensor = normalizeTensor(edgeTensor);
             await tf.browser.toPixels(edgeTensor, canvas);
             console.log("Processing complete!");
 
-            document.getElementById("analysisResult").innerText = "CTG AI Processing Completed!";
+            document.getElementById("analysisResult").innerHTML = `<strong>CTG Interpretation:</strong> ${interpretation}`;
         };
     });
 
-    // ✅ Custom Sobel Edge Detection
+    // ✅ Sobel Edge Detection
     async function applyCustomSobelFilter(imageTensor) {
         await tf.ready();
         
@@ -73,7 +75,6 @@ document.addEventListener("DOMContentLoaded", async function () {
         ], [3, 3]);
 
         let grayTensor = imageTensor.mean(2).expandDims(-1);
-
         const edgesX = tf.conv2d(grayTensor, sobelX.reshape([3, 3, 1, 1]), 1, "same");
         const edgesY = tf.conv2d(grayTensor, sobelY.reshape([3, 3, 1, 1]), 1, "same");
 
@@ -88,10 +89,53 @@ document.addEventListener("DOMContentLoaded", async function () {
         return edgeTensor;
     }
 
-    // ✅ Fix: Normalize tensor to [0,1] range
+    // ✅ Normalize tensor to [0,1] range
     function normalizeTensor(tensor) {
         const minVal = tensor.min();
         const maxVal = tensor.max();
-        return tensor.sub(minVal).div(maxVal.sub(minVal)); // Scale to [0,1]
+        return tensor.sub(minVal).div(maxVal.sub(minVal));
+    }
+
+    // ✅ Automatic CTG Interpretation (Rule-Based)
+    function interpretCTG(edgeTensor) {
+        const data = edgeTensor.arraySync();
+        let pixelSum = 0;
+        let pixelCount = 0;
+        let variabilitySum = 0;
+        let maxPixel = 0;
+        let minPixel = 1;
+
+        // ✅ Analyze pixel intensity across the image
+        for (let i = 0; i < data.length; i++) {
+            for (let j = 0; j < data[i].length; j++) {
+                let pixelValue = data[i][j][0];  // Use first channel (grayscale)
+                pixelSum += pixelValue;
+                pixelCount++;
+
+                if (pixelValue > maxPixel) maxPixel = pixelValue;
+                if (pixelValue < minPixel) minPixel = pixelValue;
+
+                // ✅ Calculate variability (differences in pixel intensity)
+                if (i > 0) {
+                    let diff = Math.abs(pixelValue - data[i - 1][j][0]);
+                    variabilitySum += diff;
+                }
+            }
+        }
+
+        let avgPixel = pixelSum / pixelCount;
+        let variability = variabilitySum / pixelCount;
+        let range = maxPixel - minPixel;
+
+        console.log(`Avg Pixel: ${avgPixel}, Variability: ${variability}, Range: ${range}`);
+
+        // ✅ Interpretation Rules
+        if (avgPixel > 0.5 && variability > 0.05 && range > 0.3) {
+            return "Normal CTG (Healthy FHR & Variability)";
+        } else if (avgPixel > 0.4 && variability < 0.05) {
+            return "Suspicious CTG (Low Variability)";
+        } else {
+            return "Pathological CTG (Abnormal Pattern Detected)";
+        }
     }
 });
