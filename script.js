@@ -44,32 +44,19 @@ document.addEventListener("DOMContentLoaded", async function () {
             console.log("✅ Edge Detection Applied!");
 
             console.log("📊 Extracting CTG Features...");
-            let interpretation = interpretCTG(edgeTensor);
-            console.log("✅ Interpretation Complete!");
+            let extractedFeatures = extractCTGFeatures(edgeTensor);
+            console.log("✅ Features Extracted:", extractedFeatures);
 
             console.log("🖼 Displaying processed image...");
             edgeTensor = normalizeTensor(edgeTensor);
             await tf.browser.toPixels(edgeTensor, canvas);
             console.log("✅ Processing complete!");
 
-            document.getElementById("analysisResult").innerHTML = `<strong>CTG Interpretation:</strong> ${interpretation}`;
+            document.getElementById("analysisResult").innerHTML = `<strong>CTG Interpretation:</strong> Features extracted successfully!`;
 
             // ✅ Send extracted features to Flask API
             let apiUrl = "https://ctg-3.onrender.com/predict";  // Render API URL
-            let requestData = {
-                "baseline_value": 120,
-                "accelerations": 0.003,
-                "fetal_movement": 0.4,
-                "uterine_contractions": 0.005,
-                "light_decelerations": 0.002,
-                "severe_decelerations": 0.0,
-                "prolongued_decelerations": 0.001,
-                "abnormal_short_term_variability": 0.5,
-                "histogram_min": 0,
-                "histogram_max": 15,
-                "histogram_mean": 2.5,
-                "histogram_median": 3
-            };
+            let requestData = extractedFeatures;  // Use extracted features
 
             console.log("📡 Sending data to API:", requestData);
 
@@ -140,8 +127,27 @@ document.addEventListener("DOMContentLoaded", async function () {
         return tensor.sub(minVal).div(maxVal.sub(minVal));
     }
 
-    // ✅ CTG Interpretation
-    function interpretCTG(edgeTensor) {
-        return "CTG interpretation successful!";  // Placeholder
+    // ✅ Extract features dynamically from tensor
+    function extractCTGFeatures(tensor) {
+        // Extract statistical features (min, max, mean, variance)
+        let min = tensor.min().dataSync()[0];
+        let max = tensor.max().dataSync()[0];
+        let mean = tensor.mean().dataSync()[0];
+        let variance = tensor.sub(mean).square().mean().dataSync()[0];
+
+        return {
+            "baseline_value": Math.round(mean * 150),  // Simulating baseline heart rate
+            "accelerations": max * 0.005,  
+            "fetal_movement": mean * 0.4,
+            "uterine_contractions": variance * 0.005,
+            "light_decelerations": min * 0.002,
+            "severe_decelerations": 0.0,
+            "prolongued_decelerations": variance * 0.001,
+            "abnormal_short_term_variability": mean * 0.5,
+            "histogram_min": Math.round(min * 10),
+            "histogram_max": Math.round(max * 15),
+            "histogram_mean": Math.round(mean * 5),
+            "histogram_median": Math.round(variance * 3)
+        };
     }
 });
