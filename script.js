@@ -69,79 +69,48 @@ document.addEventListener("DOMContentLoaded", async function () {
                 "histogram_max": 15,
                 "histogram_mean": 2.5,
                 "histogram_median": 3
-            };
-
-            console.log("📡 Sending data to API:", requestData);
-
-            try {
-                let response = await fetch(apiUrl, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(requestData)
-                });
-
-                if (!response.ok) {
-                    throw new Error(`❌ HTTP error! Status: ${response.status}`);
-                }
-
-                let result = await response.json();
-                console.log("✅ API Response:", result);
-
-                if (result.prediction !== undefined) {
-                    document.getElementById("analysisResult").innerHTML += `<br><strong>Prediction:</strong> ${result.prediction}`;
-                } else {
-                    document.getElementById("analysisResult").innerHTML += `<br><strong>Error:</strong> ${result.error}`;
-                }
-
-            } catch (error) {
-                console.error("❌ Error sending data to API:", error);
-                document.getElementById("analysisResult").innerHTML += `<br><strong>API Error:</strong> Failed to connect.`;
-            }
         };
+
+        console.log("🔹 Sending data to API:", inputData);
+
+        // ✅ Send data to the Flask API
+        fetch(API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(inputData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`❌ HTTP Error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("🔹 Prediction result:", data);
+
+            // ✅ Ensure the response contains a valid prediction
+            if (data.prediction !== undefined) {
+                const diagnosis = getDiagnosis(data.prediction);
+                predictionResult.innerHTML = `<strong>CTG Interpretation:</strong> ${diagnosis}`;
+            } else {
+                predictionResult.innerHTML = `<strong>⚠️ Error:</strong> Invalid response from API`;
+            }
+        })
+        .catch(error => {
+            console.error("❌ Error sending data to API:", error);
+            predictionResult.innerHTML = `<strong>API Error:</strong> Failed to connect.`;
+        });
     });
 
-    // ✅ Sobel Edge Detection
-    async function applyCustomSobelFilter(imageTensor) {
-        await tf.ready();
-        
-        console.log("🔍 Applying custom Sobel filter...");
-
-        const sobelX = tf.tensor2d([
-            [-1, 0, 1],
-            [-2, 0, 2],
-            [-1, 0, 1]
-        ], [3, 3]);
-
-        const sobelY = tf.tensor2d([
-            [-1, -2, -1],
-            [0, 0, 0],
-            [1, 2, 1]
-        ], [3, 3]);
-
-        let grayTensor = imageTensor.mean(2).expandDims(-1);
-        const edgesX = tf.conv2d(grayTensor, sobelX.reshape([3, 3, 1, 1]), 1, "same");
-        const edgesY = tf.conv2d(grayTensor, sobelY.reshape([3, 3, 1, 1]), 1, "same");
-
-        let edgeTensor = tf.sqrt(tf.add(tf.square(edgesX), tf.square(edgesY)));
-
-        sobelX.dispose();
-        sobelY.dispose();
-        edgesX.dispose();
-        edgesY.dispose();
-        grayTensor.dispose();
-
-        return edgeTensor;
-    }
-
-    // ✅ Normalize tensor to [0,1] range
-    function normalizeTensor(tensor) {
-        const minVal = tensor.min();
-        const maxVal = tensor.max();
-        return tensor.sub(minVal).div(maxVal.sub(minVal));
-    }
-
-    // ✅ CTG Interpretation
-    function interpretCTG(edgeTensor) {
-        return "CTG interpretation successful!";  // Placeholder
+    // ✅ Function to Map Prediction Values to Diagnosis
+    function getDiagnosis(prediction) {
+        switch (prediction) {
+            case 1: return "🟢 Normal CTG";
+            case 2: return "⚠️ Suspicious CTG (Needs Further Evaluation)";
+            case 3: return "🔴 Pathological CTG (Immediate Attention Required)";
+            default: return "❌ Unknown Diagnosis";
+        }
     }
 });
