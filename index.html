@@ -3,45 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CTG Analysis</title>
-
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    
-    <!-- TensorFlow.js Core -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-
-    <!-- TensorFlow.js WebGL Backend (Required for Sobel Edge Detection) -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@latest/dist/tf-backend-webgl.min.js"></script>
-
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css">
+    <title>Fetal Health CTG Analysis</title>
+    <link rel="stylesheet" href="style.css"> <!-- Optional: Add custom styling -->
 </head>
-<body class="bg-light">
+<body>
 
-    <div class="container mt-5">
-        <div class="card shadow p-4">
-            <h1 class="text-center mb-4">CTG Image Analysis</h1>
+    <h1>Fetal Health Prediction</h1>
 
-            <div class="mb-3 text-center">
-                <input type="file" id="ctgUpload" accept="image/*" class="form-control">
-            </div>
+    <!-- ✅ CTG Image Upload -->
+    <input type="file" id="ctgUpload" accept="image/*">
+    <button id="analyzeBtn">Analyze</button>
 
-            <div class="text-center">
-                <button id="analyzeBtn" class="btn btn-primary btn-lg">Analyze CTG</button>
-            </div>
+    <h2>CTG Processed Image:</h2>
+    <canvas id="ctgCanvas"></canvas>
 
-            <div class="mt-4 text-center">
-                <canvas id="ctgCanvas" class="border shadow-sm"></canvas>
-                <p id="analysisResult" class="mt-3 text-muted"></p>
-            </div>
-        </div>
-    </div>
+    <h2>Analysis Result:</h2>
+    <p id="analysisResult">Upload a CTG image and click "Analyze".</p>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- ✅ TensorFlow.js (Required for Image Processing) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 
-    <!-- Custom JavaScript -->
-    <script src="script.js" defer></script>
+    <!-- ✅ Include the JavaScript file -->
+    <script src="script.js"></script>
+
 </body>
 </html>
