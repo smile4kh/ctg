@@ -53,6 +53,46 @@ document.addEventListener("DOMContentLoaded", async function () {
             console.log("Processing complete!");
 
             document.getElementById("analysisResult").innerHTML = `<strong>CTG Interpretation:</strong> ${interpretation}`;
+
+            // ✅ Send extracted features to Flask API on Render
+            let apiUrl = "https://your-app-name.onrender.com/predict"; // Replace with your actual Render URL
+            let requestData = {
+                "baseline_value": 120,  // Replace with actual extracted features
+                "accelerations": 0.003,
+                "fetal_movement": 0.4,
+                "uterine_contractions": 0.005,
+                "light_decelerations": 0.002,
+                "severe_decelerations": 0.0,
+                "prolongued_decelerations": 0.001,
+                "abnormal_short_term_variability": 0.5,
+                "histogram_min": 0,
+                "histogram_max": 15,
+                "histogram_mean": 2.5,
+                "histogram_median": 3
+            };
+
+            console.log("Sending data to API:", requestData);
+
+            try {
+                let response = await fetch(apiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(requestData)
+                });
+
+                let result = await response.json();
+                console.log("API Response:", result);
+
+                if (result.prediction !== undefined) {
+                    document.getElementById("analysisResult").innerHTML += `<br><strong>Prediction:</strong> ${result.prediction}`;
+                } else {
+                    document.getElementById("analysisResult").innerHTML += `<br><strong>Error:</strong> ${result.error}`;
+                }
+
+            } catch (error) {
+                console.error("Error sending data to API:", error);
+                document.getElementById("analysisResult").innerHTML += `<br><strong>API Error:</strong> Failed to connect.`;
+            }
         };
     });
 
@@ -96,63 +136,17 @@ document.addEventListener("DOMContentLoaded", async function () {
         return tensor.sub(minVal).div(maxVal.sub(minVal));
     }
 
-    // ✅ Improved CTG Interpretation (Balanced Detection)
+    // ✅ CTG Interpretation
     function interpretCTG(edgeTensor) {
         const data = edgeTensor.arraySync();
-        let pixelSum = 0;
-        let pixelCount = 0;
-        let variabilitySum = 0;
-        let maxPixel = 0;
-        let minPixel = 1;
+        let avgPixel = 0.5;  // Placeholder values
+        let variability = 0.03;
+        let decelerationCount = 2;
+        let lowVarSegments = 1;
 
-        let decelerationCount = 0;
-        let sustainedLowVariability = 0;
-        let lastValue = 0;
-        let lowVarSegments = 0;
-        let segmentLength = 50; // Adjusted window for better detection
-        let windowSum = 0;
+        console.log(`Avg Pixel: ${avgPixel}, Variability: ${variability}, Decelerations: ${decelerationCount}, Low Variability Segments: ${lowVarSegments}`);
 
-        // ✅ Analyze pixel intensity across the image
-        for (let i = 0; i < data.length; i++) {
-            for (let j = 0; j < data[i].length; j++) {
-                let pixelValue = data[i][j][0];  // Use first channel (grayscale)
-                pixelSum += pixelValue;
-                pixelCount++;
-
-                if (pixelValue > maxPixel) maxPixel = pixelValue;
-                if (pixelValue < minPixel) minPixel = pixelValue;
-
-                // ✅ Calculate variability using a moving average window
-                if (i > 0) {
-                    let diff = Math.abs(pixelValue - data[i - 1][j][0]);
-                    variabilitySum += diff;
-
-                    // ✅ Detect decelerations (Sudden Drops)
-                    if (diff > 0.12 && pixelValue < lastValue - 0.08) {
-                        decelerationCount++;
-                    }
-
-                    // ✅ Detect sustained low variability (Flat Tracing)
-                    windowSum += diff;
-                    if (i % segmentLength === 0) {
-                        if (windowSum / segmentLength < 0.01) {
-                            lowVarSegments++;
-                        }
-                        windowSum = 0;
-                    }
-                }
-                lastValue = pixelValue;
-            }
-        }
-
-        let avgPixel = pixelSum / pixelCount;
-        let variability = variabilitySum / pixelCount;
-        let range = maxPixel - minPixel;
-
-        console.log(`Avg Pixel: ${avgPixel}, Variability: ${variability}, Range: ${range}, Decelerations: ${decelerationCount}, Low Variability Segments: ${lowVarSegments}`);
-
-        // ✅ **Balanced Interpretation Rules** (Prevents Over-Detection of Pathological Cases)
-        if (avgPixel > 0.5 && variability > 0.03 && range > 0.2 && decelerationCount < 3 && lowVarSegments < 2) {
+        if (avgPixel > 0.5 && variability > 0.03 && decelerationCount < 3 && lowVarSegments < 2) {
             return "✅ Normal CTG (Healthy FHR & Variability)";
         } else if (lowVarSegments > 2 && lowVarSegments < 5) {
             return "⚠️ Suspicious CTG (Mild Reduced Variability)";
