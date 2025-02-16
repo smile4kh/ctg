@@ -3,53 +3,39 @@ import joblib
 import pandas as pd
 import os
 
-app = Flask(__name__)
+# Load the trained model
+model_path = "fetal_health_rf_model_balanced.pkl"
 
-# ✅ Define Model Path
-MODEL_PATH = "fetal_health_rf_model_balanced.pkl"
-
-# ✅ Load the Model Safely
 try:
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(f"❌ Model file not found: {MODEL_PATH}")
-
-    model = joblib.load(MODEL_PATH)
+    model = joblib.load(model_path)
     print("✅ Model loaded successfully!")
-    expected_features = list(model.feature_names_in_)  # Ensure model is defined before using it
-    print("🔹 Expected feature order:", expected_features)
-
+    print("📌 Model trained with features:", model.feature_names_in_)
 except Exception as e:
     print(f"❌ Error loading model: {e}")
-    model = None  # Prevent Flask from crashing if the model isn't loaded
 
-# ✅ Default Route (To Check If API is Running)
+# Initialize Flask app
+app = Flask(__name__)
+
 @app.route("/", methods=["GET"])
 def home():
     return "Fetal Health Prediction API is Running!"
 
-# ✅ Prediction Route
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
-        # 🚨 Check if model is loaded before making predictions
-        if model is None:
-            return jsonify({"error": "Model is not loaded"}), 500
-
-        # ✅ Get JSON data from request
+        # Get JSON data from request
         data = request.get_json()
         if not data:
             return jsonify({"error": "No data received"}), 400
 
+        # Convert to DataFrame
         df = pd.DataFrame([data])
 
-        # ✅ Ensure feature names match the model's expected features
-        if set(df.columns) != set(expected_features):
-            return jsonify({"error": "Feature names do not match model's expected features."}), 400
+        # Ensure feature names match
+        expected_features = list(model.feature_names_in_)
+        df = df.reindex(columns=expected_features, fill_value=0)
 
-        # ✅ Reorder features to match the trained model
-        df = df[expected_features]
-
-        # ✅ Make Prediction
+        # Make prediction
         prediction = model.predict(df)
 
         return jsonify({"prediction": int(prediction[0])})
@@ -57,7 +43,7 @@ def predict():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ✅ Start Flask Application
+# Run Flask app
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
-
+    port = int(os.environ.get("PORT", 5000))  # Use Render's port or default to 5000
+    app.run(host="0.0.0.0", port=port, debug=True)
