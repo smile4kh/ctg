@@ -1,23 +1,27 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS  # ✅ Import CORS correctly
+from flask_cors import CORS
 import joblib
+import numpy as np
 import pandas as pd
-import os
+import traceback
 
-# Initialize Flask app
 app = Flask(__name__)
+CORS(app)
 
-# ✅ Enable CORS for all routes
-CORS(app, resources={r"/*": {"origins": "*"}})
-
-# ✅ Load the trained model
-model_path = "fetal_health_rf_model_balanced.pkl"
-if os.path.exists(model_path):
-    model = joblib.load(model_path)
+# Load the trained model
+try:
+    model = joblib.load("fetal_health_rf_model_balanced.pkl")
     print("✅ Model loaded successfully!")
-else:
-    print("❌ Error: Model file not found!")
-    model = None  # Prevent execution errors
+    print("Model trained with features:", model.feature_names_in_)
+except Exception as e:
+    print("❌ Error loading model:", str(e))
+
+# Define the expected feature order based on training data
+expected_features = [
+    "baseline_value", "accelerations", "fetal_movement", "uterine_contractions",
+    "light_decelerations", "severe_decelerations", "prolongued_decelerations",
+    "abnormal_short_term_variability", "histogram_min", "histogram_max"
+]
 
 @app.route("/", methods=["GET"])
 def home():
@@ -26,42 +30,40 @@ def home():
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
-        # ✅ Get JSON data from request
+        # Get the JSON request data
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data received"}), 400
+        print("\n📥 Received Data:", data)
 
-        # ✅ Convert data to DataFrame
-        df = pd.DataFrame([data])
+        # Convert input data into DataFrame
+        input_data = pd.DataFrame([data])
 
-        # ✅ Ensure features match trained model
-        expected_features = list(model.feature_names_in_)
-        df = df.reindex(columns=expected_features, fill_value=0)
+        # Check if all required features are present
+        if not all(feature in input_data.columns for feature in expected_features):
+            missing_features = [f for f in expected_features if f not in input_data.columns]
+            return jsonify({"error": f"Missing features: {missing_features}"}), 400
 
-        # ✅ Debugging: Print received data for verification
-        print("🔍 Received Data:\n", df)
+        # Ensure input data is ordered correctly
+        input_data = input_data[expected_features]
 
-        # ✅ Make prediction
-        prediction = model.predict(df)[0]
+        # Print processed input before prediction
+        print("🧐 Processed Input Data:\n", input_data)
 
-        # ✅ Interpret the prediction
-        diagnosis = {
-            1: "Normal",
-            2: "Suspicious",
-            3: "Pathological"
-        }.get(int(prediction), "Unknown")
+        # Make prediction
+        prediction = model.predict(input_data)[0]
+        print("🔍 Model Prediction:", prediction)
 
-        # ✅ Return result as JSON
-        return jsonify({
-            "prediction": int(prediction),
-            "diagnosis": diagnosis
-        })
+        # Convert numerical prediction to class label
+        diagnosis_mapping = {1: "Normal", 2: "Suspect", 3: "Pathological"}
+        diagnosis = diagnosis_mapping.get(prediction, "Unknown")
+
+        # Print final output before sending response
+        print("📢 Diagnosis:", diagnosis)
+
+        return jsonify({"diagnosis": diagnosis, "prediction": int(prediction)})
 
     except Exception as e:
-        print("❌ Error:", str(e))
-        return jsonify({"error": str(e)}), 500
+        print("❌ Error during prediction:", traceback.format_exc())
+        return jsonify({"error": "An error occurred during prediction"}), 500
 
-# ✅ Run Flask App (For Local Testing)
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
-
+    app.run(debug=True, host="0.0.0.0", port=5000)
