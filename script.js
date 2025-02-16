@@ -75,7 +75,8 @@ document.addEventListener("DOMContentLoaded", async function () {
                 console.log("✅ API Response:", result);
 
                 if (result.prediction !== undefined) {
-                    document.getElementById("analysisResult").innerHTML += `<br><strong>Prediction:</strong> ${result.prediction}`;
+                    let diagnosis = interpretPrediction(result.prediction);
+                    document.getElementById("analysisResult").innerHTML += `<br><strong>Diagnosis:</strong> ${diagnosis}`;
                 } else {
                     document.getElementById("analysisResult").innerHTML += `<br><strong>Error:</strong> ${result.error}`;
                 }
@@ -149,5 +150,18 @@ document.addEventListener("DOMContentLoaded", async function () {
             "histogram_mean": Math.round(mean * 5),
             "histogram_median": Math.round(variance * 3)
         };
+    }
+
+    // ✅ Interpret prediction results
+    function interpretPrediction(prediction) {
+        if (prediction === 1) {
+            return "Normal CTG";
+        } else if (prediction === 2) {
+            return "Suspicious CTG (Needs Further Evaluation)";
+        } else if (prediction === 3) {
+            return "Pathological CTG (Requires Immediate Attention)";
+        } else {
+            return "Unknown Prediction";
+        }
     }
 });
