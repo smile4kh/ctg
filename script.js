@@ -55,7 +55,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             document.getElementById("analysisResult").innerHTML = `<strong>CTG Interpretation:</strong> ${interpretation}`;
 
             // ✅ Send extracted features to Flask API on Render
-            let apiUrl = "https://ctg-3.onrender.com"; // Replace with your actual Render URL
+            let apiUrl = "https://ctg-3.onrender.com/predict"; // Replace with your actual Render URL
             let requestData = {
                 "baseline_value": 120,  // Replace with actual extracted features
                 "accelerations": 0.003,
