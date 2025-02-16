@@ -138,22 +138,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     // ✅ CTG Interpretation
     function interpretCTG(edgeTensor) {
-        const data = edgeTensor.arraySync();
-        let avgPixel = 0.5;  // Placeholder values
-        let variability = 0.03;
-        let decelerationCount = 2;
-        let lowVarSegments = 1;
-
-        console.log(`Avg Pixel: ${avgPixel}, Variability: ${variability}, Decelerations: ${decelerationCount}, Low Variability Segments: ${lowVarSegments}`);
-
-        if (avgPixel > 0.5 && variability > 0.03 && decelerationCount < 3 && lowVarSegments < 2) {
-            return "✅ Normal CTG (Healthy FHR & Variability)";
-        } else if (lowVarSegments > 2 && lowVarSegments < 5) {
-            return "⚠️ Suspicious CTG (Mild Reduced Variability)";
-        } else if (decelerationCount > 5 || lowVarSegments > 5) {
-            return "🚨 Pathological CTG (Late Decelerations & Severe Low Variability)";
-        } else {
-            return "⚠️ Suspicious CTG (Needs Further Evaluation)";
-        }
+        return "CTG interpretation successful!";  // Placeholder
     }
 });
