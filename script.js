@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
     }
 
-    // ✅ Set WebGL Backend
+    // ✅ Set WebGL Backend for TensorFlow.js
     await tf.setBackend('webgl');
     await tf.ready();
     console.log("TensorFlow.js WebGL backend activated!");
@@ -55,9 +55,9 @@ document.addEventListener("DOMContentLoaded", async function () {
             document.getElementById("analysisResult").innerHTML = `<strong>CTG Interpretation:</strong> ${interpretation}`;
 
             // ✅ Send extracted features to Flask API on Render
-            let apiUrl = "https://ctg-3.onrender.com/predict"; // Replace with your actual Render URL
+            let apiUrl = "https://ctg-3.onrender.com/predict"; // Render API URL
             let requestData = {
-                "baseline_value": 120,  // Replace with actual extracted features
+                "baseline value": 120,  // Make sure this matches the trained model
                 "accelerations": 0.003,
                 "fetal_movement": 0.4,
                 "uterine_contractions": 0.005,
