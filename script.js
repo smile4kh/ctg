@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", async function () {
-    console.log("Script.js is loaded!");
+    console.log("✅ script.js is loaded and running!");
 
     let analyzeBtn = document.getElementById("analyzeBtn");
     let fileInput = document.getElementById("ctgUpload");
@@ -7,20 +7,20 @@ document.addEventListener("DOMContentLoaded", async function () {
     let ctx = canvas.getContext("2d");
 
     if (!analyzeBtn) {
-        console.error("Button not found!");
+        console.error("❌ Analyze button not found!");
         return;
     }
 
-    // ✅ Set WebGL Backend for TensorFlow.js
+    // ✅ Set TensorFlow.js Backend
     await tf.setBackend('webgl');
     await tf.ready();
-    console.log("TensorFlow.js WebGL backend activated!");
+    console.log("✅ TensorFlow.js WebGL backend activated!");
 
     analyzeBtn.addEventListener("click", async function () {
-        console.log("Analyze button clicked!");
+        console.log("📸 Analyze button clicked!");
 
         if (fileInput.files.length === 0) {
-            alert("Please upload a CTG image first!");
+            alert("⚠️ Please upload a CTG image first!");
             return;
         }
 
@@ -29,35 +29,35 @@ document.addEventListener("DOMContentLoaded", async function () {
         img.src = URL.createObjectURL(file);
 
         img.onload = async function () {
-            console.log("Image loaded!");
+            console.log("✅ Image loaded!");
             canvas.width = img.width / 2;
             canvas.height = img.height / 2;
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             URL.revokeObjectURL(img.src);
 
-            console.log("Converting image to tensor...");
+            console.log("🛠 Converting image to tensor...");
             let tensor = tf.browser.fromPixels(canvas).toFloat().div(255);
-            console.log("Tensor created:", tensor.shape);
+            console.log("✅ Tensor created:", tensor.shape);
 
-            console.log("Applying Sobel Edge Detection...");
+            console.log("🎚 Applying Sobel Edge Detection...");
             let edgeTensor = await applyCustomSobelFilter(tensor);
-            console.log("Edge Detection Applied!");
+            console.log("✅ Edge Detection Applied!");
 
-            console.log("Extracting CTG Features...");
+            console.log("📊 Extracting CTG Features...");
             let interpretation = interpretCTG(edgeTensor);
-            console.log("Interpretation Complete!");
+            console.log("✅ Interpretation Complete!");
 
-            console.log("Displaying processed image...");
+            console.log("🖼 Displaying processed image...");
             edgeTensor = normalizeTensor(edgeTensor);
             await tf.browser.toPixels(edgeTensor, canvas);
-            console.log("Processing complete!");
+            console.log("✅ Processing complete!");
 
             document.getElementById("analysisResult").innerHTML = `<strong>CTG Interpretation:</strong> ${interpretation}`;
 
-            // ✅ Send extracted features to Flask API on Render
-            let apiUrl = "https://ctg-3.onrender.com/predict"; // Render API URL
+            // ✅ Send extracted features to Flask API
+            let apiUrl = "https://ctg-3.onrender.com/predict";  // Render API URL
             let requestData = {
-                "baseline value": 120,  // Make sure this matches the trained model
+                "baseline_value": 120,
                 "accelerations": 0.003,
                 "fetal_movement": 0.4,
                 "uterine_contractions": 0.005,
@@ -71,7 +71,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 "histogram_median": 3
             };
 
-            console.log("Sending data to API:", requestData);
+            console.log("📡 Sending data to API:", requestData);
 
             try {
                 let response = await fetch(apiUrl, {
@@ -80,8 +80,12 @@ document.addEventListener("DOMContentLoaded", async function () {
                     body: JSON.stringify(requestData)
                 });
 
+                if (!response.ok) {
+                    throw new Error(`❌ HTTP error! Status: ${response.status}`);
+                }
+
                 let result = await response.json();
-                console.log("API Response:", result);
+                console.log("✅ API Response:", result);
 
                 if (result.prediction !== undefined) {
                     document.getElementById("analysisResult").innerHTML += `<br><strong>Prediction:</strong> ${result.prediction}`;
@@ -90,7 +94,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 }
 
             } catch (error) {
-                console.error("Error sending data to API:", error);
+                console.error("❌ Error sending data to API:", error);
                 document.getElementById("analysisResult").innerHTML += `<br><strong>API Error:</strong> Failed to connect.`;
             }
         };
@@ -100,7 +104,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     async function applyCustomSobelFilter(imageTensor) {
         await tf.ready();
         
-        console.log("Applying custom Sobel filter...");
+        console.log("🔍 Applying custom Sobel filter...");
 
         const sobelX = tf.tensor2d([
             [-1, 0, 1],
