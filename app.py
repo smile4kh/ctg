@@ -12,6 +12,7 @@ try:
     print("📌 Model trained with features:", model.feature_names_in_)
 except Exception as e:
     print(f"❌ Error loading model: {e}")
+    model = None
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -23,6 +24,9 @@ def home():
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
+        if model is None:
+            return jsonify({"error": "Model not loaded"}), 500
+
         # Get JSON data from request
         data = request.get_json()
         if not data:
@@ -31,7 +35,7 @@ def predict():
         # Convert to DataFrame
         df = pd.DataFrame([data])
 
-        # Ensure feature names match
+        # Ensure feature names match the trained model
         expected_features = list(model.feature_names_in_)
         df = df.reindex(columns=expected_features, fill_value=0)
 
