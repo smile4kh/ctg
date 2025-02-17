@@ -57,16 +57,13 @@ def process_ctg_image(image_path):
     dominant_freq = frequencies[np.argmax(fft_values)]
     is_sinusoidal = 0.05 < dominant_freq < 0.2  # Detect repeating sinusoidal waves
 
-    # Display extracted features
-    print(f"Baseline: {baseline:.2f}, Variability: {variability:.2f}, Decelerations: {decelerations}")
-    print(f"Sinusoidal Pattern Detected: {'Yes' if is_sinusoidal else 'No'}")
-
-    # Plot extracted waveform
+    # ✅ Save waveform plot instead of using plt.show()
     plt.plot(bpm_values)
     plt.title("Extracted Fetal Heart Rate")
     plt.xlabel("Time")
     plt.ylabel("Heart Rate (bpm)")
-    plt.show()
+    plt.savefig("static/uploads/ctg_plot.png")  # Save the plot
+    plt.close()  # Prevents GUI error
 
     return {
         "Baseline": baseline,
@@ -75,7 +72,6 @@ def process_ctg_image(image_path):
         "Is_Sinusoidal": is_sinusoidal
     }
 
-# Function to classify CTG using RCOG/NICE guidelines + Machine Learning
 def classify_ctg(features):
     if features is None:
         return "Error in feature extraction"
@@ -85,26 +81,17 @@ def classify_ctg(features):
     variability_category = "Reassuring" if features["Variability"] >= 5 else "Abnormal"
     deceleration_category = "Reassuring" if features["Decelerations"] == 0 else "Abnormal"
 
-    # If sinusoidal pattern is detected, classify as pathological immediately
     if features["Is_Sinusoidal"]:
         return "Pathological (Sinusoidal Pattern Detected)"
 
-    # Count reassuring vs. non-reassuring vs. abnormal classifications
     categories = [baseline_category, variability_category, deceleration_category]
     if categories.count("Reassuring") == 3:
         return "Normal (RCOG/NICE)"
     elif "Abnormal" in categories:
         return "Pathological (RCOG/NICE)"
     
-    # If the criteria are unclear, use ML model
     feature_values = np.array([features["Baseline"], features["Variability"], features["Decelerations"]]).reshape(1, -1)
     ml_prediction = rf_model.predict(feature_values)[0]
     ml_classes = {0: "Normal", 1: "Suspicious", 2: "Pathological"}
 
     return f"{ml_classes[ml_prediction]} (ML Prediction)"
-
-# Example usage:
-image_path = "ctg_image.jpg"  # Replace with actual CTG image file
-features = process_ctg_image(image_path)
-diagnosis = classify_ctg(features)
-print(f"\nFinal CTG Diagnosis: {diagnosis}")
