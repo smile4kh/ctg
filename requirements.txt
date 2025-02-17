@@ -85,6 +85,7 @@ notebook==7.3.2
 notebook_shim==0.2.4
 numpy==1.24.3
 oauthlib==3.2.2
+opencv-python-headless==4.5.5.62
 openpyxl==3.1.5
 opt_einsum==3.4.0
 optax==0.1.8
