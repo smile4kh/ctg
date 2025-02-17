@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fetal Health CTG Analysis</title>
-    <link rel="stylesheet" href="style.css"> <!-- Optional: Add custom styling -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"> <!-- Flask-compatible CSS -->
 </head>
 <body>
 
@@ -20,10 +20,8 @@
     <h2>Analysis Result:</h2>
     <p id="analysisResult">Upload a CTG image and click "Analyze".</p>
 
-    
-
-    <!-- ✅ Include the JavaScript file -->
-    <script src="script.js"></script>
+    <!-- ✅ Flask-compatible JavaScript -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 
 </body>
 </html>
