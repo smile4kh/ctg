@@ -1,10 +1,9 @@
 import os
-import pickle
+from flask import Flask, render_template, request, jsonify
 import cv2
 import numpy as np
-from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
-import ctg_analysis  # ✅ Import ctg_analysis.py for real processing
+import ctg_analysis  # ✅ Import real CTG processing
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -13,6 +12,7 @@ app = Flask(__name__)
 UPLOAD_FOLDER = "static/uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
 
+# Configure Flask
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 # Ensure upload folder exists
@@ -44,7 +44,9 @@ def upload_file():
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         file.save(filepath)
 
-        # ✅ Use ctg_analysis to process the image
+        print(f"✅ File successfully saved at: {filepath}")  # Debugging print
+
+        # ✅ Use `ctg_analysis.py` for actual processing
         features = ctg_analysis.process_ctg_image(filepath)
         if features is None:
             return jsonify({"error": "Failed to process image"}), 500
