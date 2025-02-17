@@ -1,9 +1,10 @@
 import os
-from flask import Flask, render_template, request, jsonify
+import pickle
 import cv2
 import numpy as np
-import tensorflow as tf
+from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
+import ctg_analysis  # ✅ Import ctg_analysis.py for real processing
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -12,7 +13,6 @@ app = Flask(__name__)
 UPLOAD_FOLDER = "static/uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
 
-# Configure Flask
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 # Ensure upload folder exists
@@ -44,32 +44,22 @@ def upload_file():
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         file.save(filepath)
 
-        # Process the image
-        result = process_ctg_image(filepath)
+        # ✅ Use ctg_analysis to process the image
+        features = ctg_analysis.process_ctg_image(filepath)
+        if features is None:
+            return jsonify({"error": "Failed to process image"}), 500
 
-        return jsonify({"message": "File uploaded successfully", "result": result, "filepath": filepath})
+        # ✅ Classify CTG result using NICE/ML model
+        diagnosis = ctg_analysis.classify_ctg(features)
+
+        return jsonify({
+            "message": "File uploaded successfully",
+            "result": diagnosis,
+            "features": features,
+            "filepath": filepath
+        })
 
     return jsonify({"error": "Invalid file type"}), 400
-
-# Function to process the CTG image
-def process_ctg_image(image_path):
-    try:
-        img = cv2.imread(image_path)
-        if img is None:
-            return "Error: Unable to load image"
-
-        # Convert to grayscale
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-        # Apply edge detection (example preprocessing)
-        edges = cv2.Canny(gray, 50, 150)
-
-        # Here, you can apply AI/ML model for analysis (Example: Using TensorFlow)
-        # For now, we just return a dummy message
-        return "CTG image processed successfully"
-
-    except Exception as e:
-        return f"Error in processing: {str(e)}"
 
 # Run the Flask app
 if __name__ == "__main__":
