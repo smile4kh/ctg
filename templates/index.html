@@ -4,24 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fetal Health CTG Analysis</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"> <!-- Flask-compatible CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-
     <h1>Fetal Health Prediction</h1>
-
-    <!-- ✅ CTG Image Upload -->
     <input type="file" id="ctgUpload" accept="image/*">
     <button id="analyzeBtn">Analyze</button>
-
     <h2>CTG Processed Image:</h2>
     <canvas id="ctgCanvas"></canvas>
-
     <h2>Analysis Result:</h2>
     <p id="analysisResult">Upload a CTG image and click "Analyze".</p>
-
-    <!-- ✅ JavaScript -->
+    <h2>CTG Analysis Plot:</h2>
+    <img id="ctgPlot" src="" alt="CTG Analysis will appear here">
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-
 </body>
 </html>
