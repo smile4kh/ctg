@@ -1,53 +1,110 @@
+import cv2
 import numpy as np
-import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.signal import find_peaks
 import joblib
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import StandardScaler
 
-# Load the trained model and scaler
+# Load the trained machine learning model and scaler
 rf_model = joblib.load("rf_ctg_model.pkl")
 scaler = joblib.load("scaler.pkl")
 
-# Load dataset
-ctg_data = pd.read_csv("Cardiotocographic.csv")
+def process_ctg_image(image_path):
+    # Load image as grayscale
+    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if image is None:
+        print("Error: Unable to load image.")
+        return None
 
-# Define feature columns
-X = ctg_data.drop(columns=['NSP'])
-y = ctg_data['NSP'] - 1  # Adjusting target labels
+    # Apply Gaussian Blur to remove noise
+    blurred = cv2.GaussianBlur(image, (5, 5), 0)
 
-# Function to classify CTG using RCOG/NICE + ML
-def classify_ctg_combined(features):
-    baseline_category = "Reassuring" if 110 <= features["Baseline"] <= 160 else                         "Non-reassuring" if 100 <= features["Baseline"] <= 109 or 161 <= features["Baseline"] <= 180 else "Abnormal"
+    # Use Canny Edge Detection to detect waveform
+    edges = cv2.Canny(blurred, 50, 150)
+
+    # Find contours (detect the CTG waveform)
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
-    variability_category = "Reassuring" if features["Variability"] >= 5 else                            "Non-reassuring" if 5 > features["Variability"] >= 40 else "Abnormal"
+    # Sort contours by area and take the largest one (assuming it's the CTG trace)
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:1]
 
-    deceleration_category = "Reassuring" if features["Decelerations"] == 0 else                             "Non-reassuring" if 1 <= features["Decelerations"] <= 2 else "Abnormal"
+    # Extract Y-values of waveform to estimate heart rate
+    heart_rate_values = []
+    for contour in contours:
+        for point in contour:
+            x, y = point[0]
+            heart_rate_values.append(y)
+    
+    if not heart_rate_values:
+        print("Error: No valid waveform detected.")
+        return None
 
+    # Normalize Y-values to heart rate (50-200 bpm)
+    min_y, max_y = min(heart_rate_values), max(heart_rate_values)
+    bpm_values = [int((y - min_y) / (max_y - min_y) * 150 + 50) for y in heart_rate_values]
+    bpm_values = sorted(bpm_values)
+
+    # Detect peaks in waveform (to estimate variability and decelerations)
+    peaks, _ = find_peaks(bpm_values, height=100)
+
+    # Compute baseline, variability, and decelerations
+    baseline = np.mean(bpm_values)
+    variability = np.std(bpm_values)
+    decelerations = len([bpm for bpm in bpm_values if bpm < 110])
+
+    # Detect sinusoidal patterns using Fourier Transform
+    fft_values = np.abs(np.fft.fft(bpm_values))
+    frequencies = np.fft.fftfreq(len(bpm_values))
+    dominant_freq = frequencies[np.argmax(fft_values)]
+    is_sinusoidal = 0.05 < dominant_freq < 0.2  # Detect repeating sinusoidal waves
+
+    # Display extracted features
+    print(f"Baseline: {baseline:.2f}, Variability: {variability:.2f}, Decelerations: {decelerations}")
+    print(f"Sinusoidal Pattern Detected: {'Yes' if is_sinusoidal else 'No'}")
+
+    # Plot extracted waveform
+    plt.plot(bpm_values)
+    plt.title("Extracted Fetal Heart Rate")
+    plt.xlabel("Time")
+    plt.ylabel("Heart Rate (bpm)")
+    plt.show()
+
+    return {
+        "Baseline": baseline,
+        "Variability": variability,
+        "Decelerations": decelerations,
+        "Is_Sinusoidal": is_sinusoidal
+    }
+
+# Function to classify CTG using RCOG/NICE guidelines + Machine Learning
+def classify_ctg(features):
+    if features is None:
+        return "Error in feature extraction"
+
+    # Classify using RCOG/NICE criteria
+    baseline_category = "Reassuring" if 110 <= features["Baseline"] <= 160 else "Abnormal"
+    variability_category = "Reassuring" if features["Variability"] >= 5 else "Abnormal"
+    deceleration_category = "Reassuring" if features["Decelerations"] == 0 else "Abnormal"
+
+    # If sinusoidal pattern is detected, classify as pathological immediately
+    if features["Is_Sinusoidal"]:
+        return "Pathological (Sinusoidal Pattern Detected)"
+
+    # Count reassuring vs. non-reassuring vs. abnormal classifications
     categories = [baseline_category, variability_category, deceleration_category]
-    
     if categories.count("Reassuring") == 3:
         return "Normal (RCOG/NICE)"
-    elif categories.count("Non-reassuring") == 1 and categories.count("Reassuring") == 2:
-        return "Suspicious (RCOG/NICE)"
-    elif categories.count("Abnormal") >= 1 or categories.count("Non-reassuring") >= 2:
+    elif "Abnormal" in categories:
         return "Pathological (RCOG/NICE)"
-
-    feature_values = np.array([features[key] for key in X.columns]).reshape(1, -1)
+    
+    # If the criteria are unclear, use ML model
+    feature_values = np.array([features["Baseline"], features["Variability"], features["Decelerations"]]).reshape(1, -1)
     ml_prediction = rf_model.predict(feature_values)[0]
-
     ml_classes = {0: "Normal", 1: "Suspicious", 2: "Pathological"}
+
     return f"{ml_classes[ml_prediction]} (ML Prediction)"
 
-# Example Test Case
-new_ctg_trace = {
-    "Baseline": 145,
-    "Variability": 8,
-    "Decelerations": 1,
-    "AC": 0.004, "FM": 0, "UC": 0.008, "DL": 0.002, "DS": 0, "DP": 0,
-    "ASTV": 18, "MSTV": 2.0, "ALTV": 5, "Min": 60, "Max": 170, "Nmax": 5,
-    "Nzeros": 0, "Mode": 140, "Mean": 135, "Median": 136, "Variance": 12, "Tendency": 0
-}
-
-# Run classification
-classification_result = classify_ctg_combined(new_ctg_trace)
-print("CTG Classification:", classification_result)
+# Example usage:
+image_path = "ctg_image.jpg"  # Replace with actual CTG image file
+features = process_ctg_image(image_path)
+diagnosis = classify_ctg(features)
+print(f"\nFinal CTG Diagnosis: {diagnosis}")
