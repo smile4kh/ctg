@@ -3,7 +3,7 @@ from flask import Flask, render_template, request, jsonify
 import cv2
 import numpy as np
 from werkzeug.utils import secure_filename
-import ctg_analysis  # ✅ Import real CTG processing
+import ctg_analysis  # ✅ Import CTG processing module
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -12,7 +12,6 @@ app = Flask(__name__)
 UPLOAD_FOLDER = "static/uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
 
-# Configure Flask
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 # Ensure upload folder exists
@@ -35,7 +34,6 @@ def upload_file():
         return jsonify({"error": "No file part"}), 400
 
     file = request.files["file"]
-
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
@@ -44,9 +42,9 @@ def upload_file():
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         file.save(filepath)
 
-        print(f"✅ File successfully saved at: {filepath}")  # Debugging print
+        print(f"✅ File successfully saved at: {filepath}")
 
-        # ✅ Use `ctg_analysis.py` for actual processing
+        # ✅ Use `ctg_analysis.py` to extract CTG features
         features = ctg_analysis.process_ctg_image(filepath)
         if features is None:
             return jsonify({"error": "Failed to process image"}), 500
@@ -58,6 +56,7 @@ def upload_file():
             "message": "File uploaded successfully",
             "result": diagnosis,
             "features": features,
+            "plot_url": "/static/uploads/ctg_plot.png",  # Send plot to frontend
             "filepath": filepath
         })
 
