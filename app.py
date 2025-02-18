@@ -3,7 +3,8 @@ from flask import Flask, render_template, request, jsonify
 import cv2
 import numpy as np
 from werkzeug.utils import secure_filename
-import ctg_analysis  # ✅ Import CTG processing module
+import ctg_analysis  # ✅ Import the module
+from ctg_analysis import classify_ctg  # ✅ Import the function directly
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -51,7 +52,7 @@ def upload_file():
                 return jsonify({"error": "Failed to process image"}), 500
 
             # ✅ Classify CTG result using NICE/ML model
-            diagnosis = ctg_analysis.classify_ctg(features)
+            diagnosis = classify_ctg(features)
 
             return jsonify({
                 "message": "File uploaded successfully",
@@ -67,3 +68,6 @@ def upload_file():
         print(f"❌ ERROR: {str(e)}")  # Log the error
         return jsonify({"error": f"Server error: {str(e)}"}), 500  # Ensure JSON response
 
+# Run the Flask app
+if __name__ == "__main__":
+    app.run(debug=True)
