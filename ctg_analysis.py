@@ -39,43 +39,23 @@ def process_ctg_image(image_path):
         decelerations = len([bpm for bpm in bpm_values if bpm < 110])
 
         # ✅ Save waveform plot instead of using plt.show()
+        plot_path = "static/uploads/ctg_plot.png"
+        plt.figure(figsize=(6, 3))
         plt.plot(bpm_values)
         plt.title("Extracted Fetal Heart Rate")
         plt.xlabel("Time")
         plt.ylabel("Heart Rate (bpm)")
-        plt.savefig("static/uploads/ctg_plot.png")  # Save the plot
+        plt.savefig(plot_path)  # Save the plot
         plt.close()  # Prevents GUI error
 
         return {
             "Baseline": baseline,
             "Variability": variability,
-            "Decelerations": decelerations
+            "Decelerations": decelerations,
+            "plot_url": plot_path  # Return plot path for frontend
         }
 
     except Exception as e:
         print(f"❌ CTG PROCESSING ERROR: {str(e)}")
         return None  # Prevents breaking Flask
 
-def classify_ctg(features):
-    if features is None:
-        return "Error in feature extraction"
-
-    # Classify using RCOG/NICE criteria
-    baseline_category = "Reassuring" if 110 <= features["Baseline"] <= 160 else "Abnormal"
-    variability_category = "Reassuring" if features["Variability"] >= 5 else "Abnormal"
-    deceleration_category = "Reassuring" if features["Decelerations"] == 0 else "Abnormal"
-
-    if features["Is_Sinusoidal"]:
-        return "Pathological (Sinusoidal Pattern Detected)"
-
-    categories = [baseline_category, variability_category, deceleration_category]
-    if categories.count("Reassuring") == 3:
-        return "Normal (RCOG/NICE)"
-    elif "Abnormal" in categories:
-        return "Pathological (RCOG/NICE)"
-    
-    feature_values = np.array([features["Baseline"], features["Variability"], features["Decelerations"]]).reshape(1, -1)
-    ml_prediction = rf_model.predict(feature_values)[0]
-    ml_classes = {0: "Normal", 1: "Suspicious", 2: "Pathological"}
-
-    return f"{ml_classes[ml_prediction]} (ML Prediction)"
